@@ -1,41 +1,38 @@
 #!/bin/bash
 shopt -s nullglob
 
-CLIENTS=("$@")
+NEW_CLIENTS=("$@")
 
-# Create a list of provisioned OVPN users from existing *.ovpn files
-mapfile -t OVPN_USERS < <(find . -maxdepth 1 -name "*.ovpn" -exec basename {} .ovpn \;)
+# Create a list of provisioned clients from easy-rsa pki index
+mapfile -t CURRENT_CLIENTS < <(awk 'NR > 1 && $1 == "V" {split($0, a, "="); print a[2]}' /etc/openvpn/easy-rsa/pki/index.txt)
 
 # Revoke excess client certificates
-for OVPN_USER in "${OVPN_USERS[@]}"
+for CURRENT_CLIENT in "${CURRENT_CLIENTS[@]}"
 do
-  if [[ " ${CLIENTS[*]} " == *" $OVPN_USER "* ]];
+  if [[ " ${NEW_CLIENTS[*]} " == *" $CURRENT_CLIENT "* ]]
   then
-    echo "Keeping certificate for user ${OVPN_USER}."
+    echo "Keeping certificate for client '${CURRENT_CLIENT}'."
   else
-    echo "Revoking certificate for user ${OVPN_USER}!"
+    echo "Revoking certificate for client '${CURRENT_CLIENT}'!"
 
-    # Export the corresponding options and revoke the user certificate
-    export MENU_OPTION="2"
-    export CLIENT="${OVPN_USER}"
+    export MENU_OPTION="2" # Revoke client option
+    export CLIENT="${CURRENT_CLIENT}"
     ./openvpn-install.sh
   fi
 done
 
-# Provision an OVPN file for each new user
-for CLIENT in "${CLIENTS[@]}"
+# Create new clients
+for NEW_CLIENT in "${NEW_CLIENTS[@]}"
 do
-  # Skip all user names that already have a corresponding OVPN file
-  ovpn_filename="${CLIENT}.ovpn"
-  if [ -f "${ovpn_filename}" ]
+  if [[ " ${CURRENT_CLIENTS[*]} " == *" $NEW_CLIENT "* ]]
   then
-      echo "File '${ovpn_filename}' already exists. Skipping."
-      continue
-  fi
+    echo "'${NEW_CLIENT}' already exists. Skipping."
+  else
+    echo "Creating new client '${NEW_CLIENT}'."
 
-  # Export the corresponding options and add the user name
-  export MENU_OPTION="1"
-  export CLIENT="${CLIENT}"
-  export PASS="1"
-  ./openvpn-install.sh
+    export MENU_OPTION="1" # Create client option
+    export CLIENT="${NEW_CLIENT}"
+    export PASS="1" # No Passphrase
+    ./openvpn-install.sh
+  fi
 done
