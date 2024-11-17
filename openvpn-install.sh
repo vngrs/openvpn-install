@@ -666,6 +666,7 @@ function installOpenVPN() {
 		CLIENT=${CLIENT:-client}
 		PASS=${PASS:-1}
 		CONTINUE=${CONTINUE:-y}
+		SPLIT_TUNNEL_SUBNET=${SPLIT_TUNNEL_SUBNET:-n}
 
 		if [[ -z $ENDPOINT ]]; then
 			ENDPOINT=$(resolvePublicIP)
@@ -890,7 +891,12 @@ ifconfig-pool-persist ipp.txt" >>/etc/openvpn/server.conf
 		fi
 		;;
 	esac
-	echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
+
+	if [[ $SPLIT_TUNNEL_SUBNET == 'n' ]]; then
+		echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
+	else
+		echo "push \"route $SPLIT_TUNNEL_SUBNET\"" >>/etc/openvpn/server.conf
+	fi
 
 	# IPv6 network settings if needed
 	if [[ $IPV6_SUPPORT == 'y' ]]; then
