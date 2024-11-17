@@ -1197,7 +1197,7 @@ function newClient() {
 }
 
 function revokeClient() {
-	if [ -z "${!CLIENT}" ]
+	if [ -z "${CLIENT}" ]
 	then
 		NUMBEROFCLIENTS=$(tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep -c "^V")
 		if [[ $NUMBEROFCLIENTS == '0' ]]; then
